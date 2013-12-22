@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+
+###########################################################
+# jsh
+###########################################################
+#
+# Author: jdarr
+# Date: 2013-12-21
+# Version: 0.1
+#
+###########################################################
+#
+# A lightweight ssh wrapper.
+# Designed to resolve hostnames to IPs for easier movement
+# through network environments.
+#
+###########################################################
+
+### Variables
+
+SSH_OPTIONS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=3";
+SSH_PORT_CONF="/Users/jdarr/repo/jsh/etc/ssh_ports.conf"
+DNS_SUFFIX_CONF="/Users/jdarr/repo/jsh/etc/dns_suffixes.conf"
+GLOBAL_BIN_TIMEOUT="1";
+
+##################################################################
+# DO NOT EDIT BELOW THIS LINE (unless you know what you're doing)
+# BEWARE: HERE THERE BE MONSTERS
+##################################################################
+
+### Variables
+REQUIRED_BINS="ssh nc dig";
+for bin in ${REQUIRED_BINS}; do
+    if ! which ${bin} > /dev/null 2>&1; then
+        echo "This script requires the binary ${bin}."
+        echo "Please find and install this binary to use this script."
+        exit 1;
+    fi
+done
+SSH_BIN="$(which ssh) ${SSH_OPTIONS}";
+NC_BIN="$(which nc) -z -v -w ${GLOBAL_BIN_TIMEOUT}";
+DIG_BIN="$(which dig) +time=${GLOBAL_BIN_TIMEOUT} +tries=1 +retry=0 +short";
+SSH_PORTS=$(cat ${SSH_PORT_CONF});
+DNS_SUFFIXES=$(cat ${DNS_SUFFIX_CONF});
+
+### Functions
+function is_port_open() {
+    if [ ${#} -ne 2 ]; then echo "Usage: check_port [ip] [port]"; exit 1; fi
+    local ip=${1};
+    local port=${2};
+    ${NC_BIN} ${ip} ${port} > /dev/null 2>&1;
+    local RETVAL=${?};
+    if [ ${RETVAL} -eq 0 ]; then return 0; else return 1; fi
+}
+
+### Main
+
+username="";
+if [ ! ${#} -le 2 ]; then echo "Usage: ${0} short_hostname [username]"; exit 1; fi
+if [ ${#} -eq 2 ]; then username="${2}@"; fi
+shortname=${1};
+
+# set up our arrays and counters for data collection
+ip_array=();
+suffix_array=();
+port_array=();
+array_count=0;
+
+# main loop. run through all suffixes checking for ip resolution and open ssh ports
+for suffix in ${DNS_SUFFIXES}; do
+    tmp_ip=$(${DIG_BIN} "${shortname}${suffix}");
+    RETVAL=$?;
+    if [ ${RETVAL} -eq 0 ]; then
+        for port in ${SSH_PORTS}; do
+            if is_port_open ${tmp_ip} ${port}; then
+                echo "Found ${tmp_ip}:${port} :: ${shortname}${suffix}";
+                ip_array=( "${ip_array[@]}" "${tmp_ip}" );
+                suffix_array=( "${suffix_array[@]}" "${suffix}" );
+                port_array=( "${port_array[@]}" "${port}" );
+                array_count=$((${array_count}+1));
+            fi
+        done
+    fi
+done
+
+# Added to ensure arrays stay sane
+if [ ${#ip_array[@]} -ne ${array_count} ]; then echo "ip_array count mismatch, exiting"; exit 1; fi
+if [ ${#suffix_array[@]} -ne ${array_count} ]; then echo "suffix_array count mismatch, exiting"; exit 1; fi
+if [ ${#port_array[@]} -ne ${array_count} ]; then echo "port_array count mismatch, exiting"; exit 1; fi
+
+# if we have more than one entry, display a list and let the user choose.
+# otherwise, just connect us.
+if [ ${array_count} -ne 1 ]; then
+    echo "Multiple IPs found:";
+    for (( i=0; i<${array_count}; i++ )); do
+        linenum=$((${i}+1));
+        ip=${ip_array[${i}]};
+        port=${port_array[${i}]};
+        suffix=${suffix_array[${i}]};
+        echo "${linenum}) ${ip}:${port} :: ${shortname}${suffix}";
+    done
+    read -p "Choose and pay: " linenum;
+    arraynum=$((${linenum}-1));
+    selected_ip=${ip_array[${arraynum}]};
+    selected_port=${port_array[${arraynum}]};
+else
+    selected_ip=${ip_array[0]};
+    selected_port=${port_array[0]};
+fi
+
+${SSH_BIN} -p ${selected_port} ${username}${selected_ip};
+exit 0;
