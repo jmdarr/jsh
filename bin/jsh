@@ -6,7 +6,7 @@
 #
 # Author: jdarr
 # Date: 2013-12-21
-# Version: 0.1
+# Version: 1.0
 #
 ###########################################################
 #
@@ -19,8 +19,8 @@
 ### Variables
 
 SSH_OPTIONS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=3";
-SSH_PORT_CONF="/Users/jdarr/repo/jsh/etc/ssh_ports.conf"
-DNS_SUFFIX_CONF="/Users/jdarr/repo/jsh/etc/dns_suffixes.conf"
+SSH_PORT_CONF="/path/to/list_of_ssh_ports"
+DNS_SUFFIX_CONF="/port/to/list_of_dns_suffixes"
 GLOBAL_BIN_TIMEOUT="1";
 
 ##################################################################
@@ -70,7 +70,7 @@ array_count=0;
 for suffix in ${DNS_SUFFIXES}; do
     tmp_ip=$(${DIG_BIN} "${shortname}${suffix}");
     RETVAL=$?;
-    if [ ${RETVAL} -eq 0 ]; then
+    if [ ${RETVAL} -eq 0 ] && [ ! -z ${tmp_ip} ]; then
         for port in ${SSH_PORTS}; do
             if is_port_open ${tmp_ip} ${port}; then
                 echo "Found ${tmp_ip}:${port} :: ${shortname}${suffix}";
@@ -90,7 +90,13 @@ if [ ${#port_array[@]} -ne ${array_count} ]; then echo "port_array count mismatc
 
 # if we have more than one entry, display a list and let the user choose.
 # otherwise, just connect us.
-if [ ${array_count} -ne 1 ]; then
+if [ ${array_count} -eq 0 ]; then
+    echo "Unable to resolve '${shortname}'";
+    exit 1;
+elif [ ${array_count} -eq 1 ]; then
+    selected_ip=${ip_array[0]};
+    selected_port=${port_array[0]};
+else
     echo "Multiple IPs found:";
     for (( i=0; i<${array_count}; i++ )); do
         linenum=$((${i}+1));
@@ -103,9 +109,6 @@ if [ ${array_count} -ne 1 ]; then
     arraynum=$((${linenum}-1));
     selected_ip=${ip_array[${arraynum}]};
     selected_port=${port_array[${arraynum}]};
-else
-    selected_ip=${ip_array[0]};
-    selected_port=${port_array[0]};
 fi
 
 ${SSH_BIN} -p ${selected_port} ${username}${selected_ip};
