@@ -1,7 +1,7 @@
 jsh
 ===
 
-Bash wrapper for SSH. Resolves a full FQDN based on a set of DNS suffixes, then determines connectivity to SSH ports.
+Bash wrapper for SSH. Resolves a FQDN based on a set of DNS suffixes, then determines connectivity to SSH ports.
 Two conf files are involved with jsh:
 
 **etc/dns_suffixes.conf**
