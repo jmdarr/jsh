@@ -19,8 +19,8 @@
 ### Variables
 
 SSH_OPTIONS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=3";
-SSH_PORT_CONF="/path/to/list_of_ssh_ports"
-DNS_SUFFIX_CONF="/port/to/list_of_dns_suffixes"
+SSH_PORT_CONF="/path/to/ssh_ports.conf"
+DNS_SUFFIX_CONF="/port/to/dns_suffixes.conf"
 GLOBAL_BIN_TIMEOUT="1";
 
 ##################################################################
