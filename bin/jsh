@@ -6,7 +6,7 @@
 #
 # Author: jdarr
 # Date: 2013-12-21
-# Version: 1.0
+# Version: 1.1
 #
 ###########################################################
 #
@@ -71,9 +71,10 @@ for suffix in ${DNS_SUFFIXES}; do
     tmp_ip=$(${DIG_BIN} "${shortname}${suffix}");
     RETVAL=$?;
     if [ ${RETVAL} -eq 0 ] && [ ! -z ${tmp_ip} ]; then
+        echo "Found ${shortname}${suffix} :: ${tmp_ip}";
         for port in ${SSH_PORTS}; do
             if is_port_open ${tmp_ip} ${port}; then
-                echo "Found ${tmp_ip}:${port} :: ${shortname}${suffix}";
+                echo "Found open port: ${tmp_ip}:${port}";
                 ip_array=( "${ip_array[@]}" "${tmp_ip}" );
                 suffix_array=( "${suffix_array[@]}" "${suffix}" );
                 port_array=( "${port_array[@]}" "${port}" );
@@ -98,7 +99,7 @@ elif [ ${array_count} -eq 1 ]; then
     selected_port=${port_array[0]};
 else
     echo;
-    echo "Multiple IPs found:";
+    echo "Multiple hostnames resolved:";
     for (( i=0; i<${array_count}; i++ )); do
         linenum=$((${i}+1));
         ip=${ip_array[${i}]};
