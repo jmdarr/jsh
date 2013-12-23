@@ -97,6 +97,7 @@ elif [ ${array_count} -eq 1 ]; then
     selected_ip=${ip_array[0]};
     selected_port=${port_array[0]};
 else
+    echo;
     echo "Multiple IPs found:";
     for (( i=0; i<${array_count}; i++ )); do
         linenum=$((${i}+1));
